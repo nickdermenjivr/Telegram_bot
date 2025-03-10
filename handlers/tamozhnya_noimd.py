@@ -3,18 +3,14 @@ from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.ext import ContextTypes
 
-
 async def tamozhnya_noimd_news_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик для отправки новостей."""
-    url = "https://noi.md/ru/news-by-tag/tamozhnya"  # Замените на URL новостного сайта
-    news = parse_news(url)
-    post = format_news(news, 0)
-    await update.message.reply_text(post)
+    await update.message.reply_text(format_news(parse_news()[0]))
 
 
-def parse_news(url):
+def parse_news():
     """Парсит новости с сайта https://www.zr.ru/news/."""
-    response = requests.get(url)
+    response = requests.get("https://noi.md/ru/news-by-tag/tamozhnya")
     response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "lxml")
@@ -28,9 +24,8 @@ def parse_news(url):
 
     return news_items
 
-def format_news(news_items, index):
+def format_news(news_item):
     """Форматирует новости в текстовый пост."""
     post = "📰 Таможенные новости:\n\n"
-    postItem = news_items[index]
-    post += f"🔹{postItem['title']}.\n[https://noi.md{postItem['link']}]\n\n"
+    post += f"🔹{news_item['title']}.\n[https://noi.md{news_item['link']}]\n\n"
     return post
