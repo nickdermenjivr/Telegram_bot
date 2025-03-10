@@ -39,6 +39,7 @@ async def start_timer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         data={"index": 0}  # Инициализируем индекс
     )
 
+
 async def stop_timer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда для остановки таймера."""
     # Получаем chat_id пользователя
