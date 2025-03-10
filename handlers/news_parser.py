@@ -8,8 +8,8 @@ async def news_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик для отправки новостей."""
     url = "https://www.zr.ru/news/"  # Замените на URL новостного сайта
     news = parse_news(url)
-    post = format_news(news, 0)
-    await update.message.reply_text(post)
+    #post = format_news(news, 0)
+    await update.message.reply_text(news)
 
 
 def parse_news(url):
@@ -27,7 +27,7 @@ def parse_news(url):
         description = item.find("div", class_="styled__AnnouncementDescription-sc-d7096096-2 eZkTxD").text.strip()  
         news_items.append({"title": title, "link": link, "description": description})
 
-    return news_items
+    return news_items[0]["title"]
 
 def format_news(news_items, index):
     """Форматирует новости в текстовый пост."""

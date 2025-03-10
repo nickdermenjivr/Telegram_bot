@@ -6,6 +6,8 @@ from config import TOKEN
 from handlers.start import *
 from handlers.timer import start_timer, stop_timer
 from handlers.news_parser import parse_news, format_news, news_handler  # Импортируем парсер
+from handlers.chat_id_handler import chat_id
+from handlers.tamozhnya_noimd import tamozhnya_noimd_news_handler
 
 async def main():
     # Создаем Application с включенным JobQueue
@@ -16,8 +18,8 @@ async def main():
     application.add_handler(CommandHandler("timer", start_timer))  # Запуск таймера
     application.add_handler(CommandHandler("stoptimer", stop_timer))  # Остановка таймера
     application.add_handler(CommandHandler("news", news_handler))  # Команда /news
-
-    await simulate_start(application)  # Запускаем команду /start вручную
+    application.add_handler(CommandHandler("tamozhnya_news", tamozhnya_noimd_news_handler))  # Команда /news
+    application.add_handler(CommandHandler("chatid", chat_id))
 
     # Запуск бота
     await application.run_polling()
