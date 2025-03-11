@@ -6,6 +6,7 @@ from telegram.ext import ContextTypes
 
 from handlers.news_parsers.politica_noimd import parse_news as politica_noimd_parseNews
 from handlers.news_parsers.tamozhnya_noimd import parse_news as tamozhnya_noimd_parseNews
+from handlers.news_parsers.bulgaria_tourism import parse_news as bulgaria_tourism_parseNews
 
 
 # Текущая новость
@@ -15,8 +16,8 @@ news_index = 0
 async def news_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик для отправки новостей c периодичностью."""
     global news
-    news = interleave_lists(politica_noimd_parseNews(), tamozhnya_noimd_parseNews())
-    context.job_queue.run_repeating(post_news, interval=5, first=0.1, chat_id=update.message.chat_id)
+    news = interleave_lists(politica_noimd_parseNews(), tamozhnya_noimd_parseNews(), bulgaria_tourism_parseNews())
+    context.job_queue.run_repeating(post_news, interval=7200, first=0.1, chat_id=update.message.chat_id)
     print(f"Amount of parsed news: {len(news)}")
 
 
