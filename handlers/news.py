@@ -11,7 +11,7 @@ from handlers.news_parsers.bulgaria_tourism import parse_news as bulgaria_touris
 
 # Текущая новость
 news = {}
-news_index = 0
+news_index = 5
 
 async def news_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик для отправки новостей c периодичностью."""
