@@ -6,13 +6,14 @@ from telegram.ext import ContextTypes
 
 # Словарь с источниками и их параметрами парсинга
 sources = {
+    
+    2: {
+        "url": "https://newsmaker.md/ru/category/news",
+        "parser": lambda soup: soup.find("h3", class_="elementor-heading-title elementor-size-default").find("a")["href"],
+    },
     1: {
         "url": "https://nokta.md",
         "parser": lambda soup: soup.find("a", class_="list-item__link-inner")["href"],
-    },
-    2: {
-        "url": "https://noi.md/ru/news-by-tag/tamozhnya",
-        "parser": lambda soup: soup.find("a", class_="news-feed-item-hdr")["href"],
     },
     # Добавьте остальные источники здесь
 }
@@ -22,7 +23,7 @@ last_news = {i: NewsItem("") for i in sources.keys()}
 
 async def news_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик для отправки новостей c периодичностью."""
-    context.job_queue.run_repeating(post_news, interval=5, first=0.1, chat_id=update.message.chat_id)
+    context.job_queue.run_repeating(post_news, interval=2500, first=0.1, chat_id=update.message.chat_id)
     print(f"News handler started his job!")
 
 async def post_news(context: ContextTypes.DEFAULT_TYPE):

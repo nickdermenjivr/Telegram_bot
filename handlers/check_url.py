@@ -1,6 +1,6 @@
 import requests
 
-url = "https://nokta.md/"
+url = "https://newsmaker.md/ru/category/news"
 response = requests.get(url)
 
 print("Wait for answer!")
