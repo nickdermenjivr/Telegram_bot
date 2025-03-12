@@ -13,7 +13,7 @@ def parse_news():
     news_items = []
 
     # Парсим новостные блоки
-    for item in soup.find_all("a", class_="news-feed-item-hdr"):  # Новостной блок
+        item = soup.find_all("a", class_="news-feed-item-hdr"):  # Новостной блок
         link = item["href"]  # Ссылка
         news_items.append(NewsItem("https://noi.md", link))
 

@@ -1,37 +1,55 @@
-import data.news_data
+from data.news_data import *
 import requests
 from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from handlers.news_parsers.politica_noimd import parse_news as politica_noimd_parseNews
-from handlers.news_parsers.tamozhnya_noimd import parse_news as tamozhnya_noimd_parseNews
-from handlers.news_parsers.bulgaria_tourism import parse_news as bulgaria_tourism_parseNews
+# Словарь с источниками и их параметрами парсинга
+sources = {
+    1: {
+        "url": "https://nokta.md",
+        "parser": lambda soup: soup.find("a", class_="list-item__link-inner")["href"],
+    },
+    2: {
+        "url": "https://noi.md/ru/news-by-tag/tamozhnya",
+        "parser": lambda soup: soup.find("a", class_="news-feed-item-hdr")["href"],
+    },
+    # Добавьте остальные источники здесь
+}
 
-
-# Текущая новость
-news = {}
-news_index = 5
+# Словарь для хранения последних новостей из каждого источника
+last_news = {i: NewsItem("") for i in sources.keys()}
 
 async def news_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик для отправки новостей c периодичностью."""
-    global news
-    news = interleave_lists(politica_noimd_parseNews(), tamozhnya_noimd_parseNews(), bulgaria_tourism_parseNews())
-    context.job_queue.run_repeating(post_news, interval=7200, first=0.1, chat_id=update.message.chat_id)
-    print(f"Amount of parsed news: {len(news)}")
-
-
-def interleave_lists(*lists):
-    """Перемешивает элементы из N списков по очереди."""
-    return [item for group in zip(*lists) for item in group] + [item for lst in lists for item in lst[len(min(lists, key=len)):]]
-
+    context.job_queue.run_repeating(post_news, interval=5, first=0.1, chat_id=update.message.chat_id)
+    print(f"News handler started his job!")
 
 async def post_news(context: ContextTypes.DEFAULT_TYPE):
-    """Отправляет следующую новость."""
-    global news, news_index
+    global last_news
 
-    if news_index + 1 >= len(news):
-        return  # Если новости закончились, ничего не делаем
+    for source_index in sources.keys():
+        news = parse_news(source_index)
+        if news != last_news[source_index]:
+            last_news[source_index] = news
+            await context.bot.send_message(chat_id=context.job.chat_id, text=news.format_news())
+            print(f"News posted from source {source_index}: {news.link}")
+            return  # Публикуем только одну новость за раз
 
-    await context.bot.send_message(chat_id=context.job.chat_id, text=news[news_index].format_news())
-    news_index += 1
+    print("No new news from any source.")
+
+def parse_news(source_index):
+    source = sources.get(source_index)
+    if not source:
+        print(f"Source {source_index} not found!")
+        return NewsItem("")
+
+    try:
+        response = requests.get(source["url"])
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "lxml")
+        link = source["parser"](soup)  # Используем лямбду для парсинга
+        return NewsItem(link)
+    except Exception as e:
+        print(f"Error parsing source {source_index}: {e}")
+        return NewsItem("")
