@@ -6,14 +6,14 @@ from telegram.ext import ContextTypes
 
 # Словарь с источниками и их параметрами парсинга
 sources = {
-    
-    2: {
-        "url": "https://newsmaker.md/ru/category/news",
-        "parser": lambda soup: soup.find("h3", class_="elementor-heading-title elementor-size-default").find("a")["href"],
-    },
+
     1: {
         "url": "https://nokta.md",
         "parser": lambda soup: soup.find("a", class_="list-item__link-inner")["href"],
+    },
+    2: {
+        "url": "https://newsmaker.md/ru/category/news",
+        "parser": lambda soup: soup.find("h3", class_="elementor-heading-title elementor-size-default").find("a")["href"],
     },
     # Добавьте остальные источники здесь
 }
