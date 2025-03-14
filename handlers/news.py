@@ -1,12 +1,16 @@
 from data.news_data import *
 import requests
+from datetime import time, datetime
 from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.ext import ContextTypes
 
+# Время начала и окончания работы (8:00 - 22:00)
+START_TIME = time(8, 0)
+END_TIME = time(22, 0) 
+
 # Словарь с источниками и их параметрами парсинга
 sources = {
-
     1: {
         "url": "https://nokta.md",
         "parser": lambda soup: soup.find("a", class_="list-item__link-inner")["href"],
@@ -23,11 +27,37 @@ last_news = {i: NewsItem("") for i in sources.keys()}
 
 async def news_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик для отправки новостей c периодичностью."""
-    context.job_queue.run_repeating(post_news, interval=2500, first=0.1, chat_id=update.message.chat_id)
-    print(f"News handler started his job!")
+    
+    #Удаляем сообщение с командой из чата
+    await context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+    
+    #Запускаем задачу
+    job = context.job_queue.run_repeating(post_news, interval=3600, first=0.1, chat_id=update.message.chat_id)
+    context.chat_data['news_job'] = job  # Сохраняем задачу в контексте
+    print(f"Публикация новостей начата!")
+
+async def stop_news_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик для остановки периодической задачи."""
+
+    #Удаляем сообщение с командой из чата
+    await context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+    
+    if 'news_job' in context.chat_data:
+        job = context.chat_data['news_job']
+        job.schedule_removal()  # Останавливаем задачу
+        del context.chat_data['news_job']  # Удаляем задачу из контекста
+        print("Публикация новостей приостановлена.")
+    else:
+       print("Нет активной задачи для остановки.")
 
 async def post_news(context: ContextTypes.DEFAULT_TYPE):
     global last_news
+
+    # Проверяем текущее время
+    now = datetime.now().time()
+    if not (START_TIME <= now <= END_TIME):
+        print("Время отдохнуть от публикации рекламы! Спокойной ночи!")
+        return
 
     for source_index in sources.keys():
         news = parse_news(source_index)
