@@ -32,7 +32,7 @@ async def news_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
     
     #Запускаем задачу
-    job = context.job_queue.run_repeating(post_news, interval=3600, first=0.1, chat_id=update.message.chat_id)
+    job = context.job_queue.run_repeating(post_news, interval=7000, first=0.1, chat_id=update.message.chat_id)
     context.chat_data['news_job'] = job  # Сохраняем задачу в контексте
     print(f"Публикация новостей начата!")
 
