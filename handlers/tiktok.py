@@ -1,16 +1,25 @@
 import os
 import shutil
+import random
 from yt_dlp import YoutubeDL
 from telegram import Update
-from telegram.ext import ContextTypes, JobQueue
+from telegram.ext import ContextTypes
 from datetime import time, datetime
 
 # Время начала и окончания работы (8:00 - 22:00)
 START_TIME = time(8, 0)
 END_TIME = time(22, 0)
 
-# Глобальная переменная для хранения ссылки на последнее опубликованное видео
-last_posted_video_url = ""
+# Словарь для хранения последнего опубликованного видео для каждого канала
+last_posted_videos = {}
+
+# Список каналов TikTok
+TIKTOK_CHANNELS = [
+    "https://www.tiktok.com/@itz_comedy_official",
+    "https://www.tiktok.com/@alexanderyur7",
+    "https://www.tiktok.com/@goodjokes2025",
+    # Добавьте другие каналы здесь
+]
 
 async def tiktok_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -22,7 +31,7 @@ async def tiktok_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Запускаем задачу
     job = context.job_queue.run_repeating(
         post_tiktok_video,  # Функция, которая будет выполняться
-        interval=20000,  # Интервал в секундах (7 секунд)
+        interval=10000,  # Интервал в секундах (20 секунд)
         first=0.1,  # Задержка перед первым запуском (0.1 секунды)
         chat_id=update.message.chat_id,  # ID чата
     )
@@ -48,7 +57,7 @@ async def post_tiktok_video(context: ContextTypes.DEFAULT_TYPE):
     """
     Периодическая задача для публикации видео из TikTok.
     """
-    global last_posted_video_url
+    global last_posted_videos
 
     # Проверяем текущее время
     now = datetime.now().time()
@@ -56,54 +65,63 @@ async def post_tiktok_video(context: ContextTypes.DEFAULT_TYPE):
         print("Время отдохнуть от публикации видео! Спокойной ночи!")
         return
 
-    # Укажите ссылку на канал TikTok
-    channel_url = "https://www.tiktok.com/@alexanderyur7"  # Замените на реальную ссылку
+    # Перемешиваем список каналов для случайного порядка
+    random.shuffle(TIKTOK_CHANNELS)
 
-    # Получаем ссылку на последнее видео
-    latest_video_url = await get_latest_tiktok_video_url(channel_url)
+    # Перебираем каналы, пока не найдем новое видео
+    for channel_url in TIKTOK_CHANNELS:
+        print(f"Проверяем канал: {channel_url}")
 
-    if latest_video_url:
-        if latest_video_url == last_posted_video_url:
-            print(f"Видео из TikTok уже было опубликовано: {latest_video_url}")
-            return
+        # Получаем ссылку на последнее видео
+        latest_video_url = await get_latest_tiktok_video_url(channel_url)
 
-        # Скачиваем видео
-        downloaded_video_path = await download_tiktok_video(latest_video_url)
+        if latest_video_url:
+            # Проверяем, было ли это видео уже опубликовано для данного канала
+            if channel_url in last_posted_videos and latest_video_url == last_posted_videos[channel_url]:
+                print(f"Видео из TikTok уже было опубликовано: {latest_video_url}")
+                continue  # Переходим к следующему каналу
 
-        if downloaded_video_path:
-            try:
-                # Открываем файл и отправляем видео в чат как новое сообщение
-                with open(downloaded_video_path, 'rb') as video_file:
-                    await context.bot.send_video(
-                        chat_id=context.job.chat_id,  # ID чата
-                        video=video_file,  # Видеофайл
-                        caption="@moldovabolgaria"  # Опциональный заголовок
-                    )
-                last_posted_video_url = latest_video_url
-                print(f"Видео успешно отправлено: {downloaded_video_path}")
-            except Exception as e:
-                print(f"Ошибка при отправке видео: {e}")
-            finally:
-                # Удаляем видео после отправки (или в случае ошибки)
-                if os.path.exists(downloaded_video_path):
-                    try:
-                        os.remove(downloaded_video_path)
-                        print(f"Видео удалено: {downloaded_video_path}")
-                    except PermissionError:
-                        print(f"Не удалось удалить файл: {downloaded_video_path}. Файл всё ещё используется.")
+            # Скачиваем видео
+            downloaded_video_path = await download_tiktok_video(latest_video_url)
 
-                # Удаляем папку downloads, если она пуста
-                output_dir = os.path.dirname(downloaded_video_path)
-                if os.path.exists(output_dir) and not os.listdir(output_dir):
-                    try:
-                        shutil.rmtree(output_dir)
-                        print(f"Папка удалена: {output_dir}")
-                    except Exception as e:
-                        print(f"Не удалось удалить папку: {e}")
+            if downloaded_video_path:
+                try:
+                    # Открываем файл и отправляем видео в чат как новое сообщение
+                    with open(downloaded_video_path, 'rb') as video_file:
+                        await context.bot.send_video(
+                            chat_id=context.job.chat_id,  # ID чата
+                            video=video_file,  # Видеофайл
+                            caption="@moldovabolgaria"  # Опциональный заголовок
+                        )
+                    # Обновляем последнее опубликованное видео для этого канала
+                    last_posted_videos[channel_url] = latest_video_url
+                    print(f"Видео успешно отправлено: {downloaded_video_path}")
+                    break  # Выходим из цикла после успешной публикации
+                except Exception as e:
+                    print(f"Ошибка при отправке видео: {e}")
+                finally:
+                    # Удаляем видео после отправки (или в случае ошибки)
+                    if os.path.exists(downloaded_video_path):
+                        try:
+                            os.remove(downloaded_video_path)
+                            print(f"Видео удалено: {downloaded_video_path}")
+                        except PermissionError:
+                            print(f"Не удалось удалить файл: {downloaded_video_path}. Файл всё ещё используется.")
+
+                    # Удаляем папку downloads, если она пуста
+                    output_dir = os.path.dirname(downloaded_video_path)
+                    if os.path.exists(output_dir) and not os.listdir(output_dir):
+                        try:
+                            shutil.rmtree(output_dir)
+                            print(f"Папка удалена: {output_dir}")
+                        except Exception as e:
+                            print(f"Не удалось удалить папку: {e}")
+            else:
+                print("Не удалось скачать видео из TikTok.")
         else:
-            print("Не удалось скачать видео из TikTok.")
+            print("Не удалось получить ссылку на последнее видео.")
     else:
-        print("Не удалось получить ссылку на последнее видео.")
+        print("Нет новых видео на всех каналах.")
 
 async def get_latest_tiktok_video_url(channel_url):
     """
