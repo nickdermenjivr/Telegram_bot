@@ -15,9 +15,9 @@ last_posted_videos = {}
 
 # Список каналов TikTok
 TIKTOK_CHANNELS = [
-    "https://www.tiktok.com/@itz_comedy_official",
-    "https://www.tiktok.com/@alexanderyur7",
-    "https://www.tiktok.com/@goodjokes2025",
+    "https://www.tiktok.com/@webstoremd",
+    #"https://www.tiktok.com/@itz_comedy_official",
+    #"https://www.tiktok.com/@alexanderyur7",
     # Добавьте другие каналы здесь
 ]
 
@@ -91,7 +91,7 @@ async def post_tiktok_video(context: ContextTypes.DEFAULT_TYPE):
                         await context.bot.send_video(
                             chat_id=context.job.chat_id,  # ID чата
                             video=video_file,  # Видеофайл
-                            caption="🎬 Новый прикол! 🤣 Смотри 👉 @moldovabolgaria"  # Опциональный заголовок
+                            caption="🎬 Новый прикол! 🤣 Смотри 👉 @moldovabolgaria \n#ВирусноеВидео #Юмор #Тренды"  # Опциональный заголовок
                         )
                     # Обновляем последнее опубликованное видео для этого канала
                     last_posted_videos[channel_url] = latest_video_url

@@ -1,21 +1,29 @@
 from data.news_data import *
 import requests
-from datetime import time, datetime
+import time  # Добавляем импорт модуля time для time.sleep()
+from datetime import time as datetime_time, datetime  # Переименовываем импортированный time из datetime
 from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.ext import ContextTypes
+from urllib.parse import urljoin
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 # Время начала и окончания работы (8:00 - 22:00)
-START_TIME = time(8, 0)
-END_TIME = time(22, 0) 
+START_TIME = datetime_time(8, 0)  # Используем переименованный datetime_time
+END_TIME = datetime_time(22, 0)  # Используем переименованный datetime_time
 
 # Словарь с источниками и их параметрами парсинга
 sources = {
     1: {
+        "url": "https://news.google.com/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx1YlY4U0FuSjFHZ0pTVlNnQVAB?hl=ru&gl=RU&ceid=RU%3Aru",
+        "parser": lambda soup: soup.find("a", class_="WwrzSb")["href"],
+    },
+    2: {
         "url": "https://nokta.md",
         "parser": lambda soup: soup.find("a", class_="list-item__link-inner")["href"],
     },
-    2: {
+    3: {
         "url": "https://newsmaker.md/ru/category/news",
         "parser": lambda soup: soup.find("h3", class_="elementor-heading-title elementor-size-default").find("a")["href"],
     },
@@ -32,7 +40,12 @@ async def news_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
     
     #Запускаем задачу
-    job = context.job_queue.run_repeating(post_news, interval=7000, first=0.1, chat_id=update.message.chat_id)
+    job = context.job_queue.run_repeating(
+        post_news, 
+        interval=7000, 
+        first=0.1, 
+        chat_id=update.message.chat_id
+        )
     context.chat_data['news_job'] = job  # Сохраняем задачу в контексте
     print(f"Публикация новостей начата!")
 
@@ -63,7 +76,11 @@ async def post_news(context: ContextTypes.DEFAULT_TYPE):
         news = parse_news(source_index)
         if news != last_news[source_index]:
             last_news[source_index] = news
-            await context.bot.send_message(chat_id=context.job.chat_id, text=news.format_news())
+            await context.bot.send_message(
+                chat_id=context.job.chat_id, 
+                text=news.format_news(),
+                caption="🚨 Свежие новости от @moldovabolgaria — читайте прямо сейчас!"
+                )
             print(f"News posted from source {source_index}: {news.link}")
             return  # Публикуем только одну новость за раз
 
@@ -79,8 +96,50 @@ def parse_news(source_index):
         response = requests.get(source["url"])
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "lxml")
-        link = source["parser"](soup)  # Используем лямбду для парсинга
+        link = source["parser"](soup)
+
+        if not link.startswith("https"):
+            print("GET REAL LINK")
+            real_url = get_real_url(link)
+            return NewsItem(real_url)
+
         return NewsItem(link)
     except Exception as e:
         print(f"Error parsing source {source_index}: {e}")
         return NewsItem("")
+
+
+
+def get_real_url(relative_url):
+    full_url = urljoin("https://news.google.com/", relative_url)
+    
+    # Настройка браузера Chrome
+    options = Options()
+    options.add_argument("--headless")
+    driver = webdriver.Chrome(options=options)
+    
+    try:
+        # Переходим по URL
+        driver.get(full_url)
+        
+        # Начальный URL
+        current_url = driver.current_url
+        stable = False
+        attempts = 0
+        
+        # Проверяем стабильность URL
+        while not stable and attempts < 10:
+            time.sleep(1)  # Важно: используем time.sleep(), а не time()
+            new_url = driver.current_url
+            
+            if new_url == current_url:
+                stable = True
+            else:
+                current_url = new_url
+            
+            attempts += 1
+        
+        # Возвращаем финальный URL
+        return driver.current_url
+    finally:
+        driver.quit()

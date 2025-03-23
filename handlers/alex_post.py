@@ -23,7 +23,7 @@ async def start_sending_posts(update: Update, context: ContextTypes.DEFAULT_TYPE
     await context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
     
     #Запускаем задачу
-    job = context.job_queue.run_repeating(send_photo, interval=9000.0, first=1500.0, chat_id=update.message.chat_id)
+    job = context.job_queue.run_repeating(send_photo, interval=9000.0, first=0.1, chat_id=update.message.chat_id)
     context.chat_data['photo_job'] = job  # Сохраняем задачу в контексте
     print("Публикация фотографий начата!")
 
