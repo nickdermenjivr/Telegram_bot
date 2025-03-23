@@ -22,7 +22,7 @@ async def main():
     application.add_handler(CommandHandler("chatid", chat_id))
     application.add_handler(CommandHandler("alexpost", start_sending_posts))
     application.add_handler(CommandHandler("stopalexpost", stop_sending_posts))
-    application.add_handler(CommandHandler("mem", tiktok_handler))
+    application.add_handler(CommandHandler("tiktok", tiktok_handler))
 
     # Регистрация inline-обработчика
     inline_post_handler(application)
