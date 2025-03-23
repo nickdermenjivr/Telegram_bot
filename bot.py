@@ -9,7 +9,7 @@ from handlers.chat_id_handler import chat_id
 from handlers.news import news_handler, stop_news_handler
 from handlers.alex_post import start_sending_posts, stop_sending_posts
 from inline_handlers.inline_post import inline_post_handler
-from handlers.tiktok import tiktok_handler
+from handlers.tiktok import tiktok_handler, stop_tiktok_handler
 
 async def main():
     # Создаем Application с включенным JobQueue
@@ -23,6 +23,7 @@ async def main():
     application.add_handler(CommandHandler("alexpost", start_sending_posts))
     application.add_handler(CommandHandler("stopalexpost", stop_sending_posts))
     application.add_handler(CommandHandler("tiktok", tiktok_handler))
+    application.add_handler(CommandHandler("stoptiktok", stop_tiktok_handler))
 
     # Регистрация inline-обработчика
     inline_post_handler(application)
