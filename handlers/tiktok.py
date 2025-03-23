@@ -8,18 +8,26 @@ from datetime import time, datetime
 
 # Время начала и окончания работы (8:00 - 22:00)
 START_TIME = time(8, 0)
-END_TIME = time(22, 0)
-
-# Словарь для хранения последнего опубликованного видео для каждого канала
-last_posted_videos = {}
+END_TIME = time(23, 0)
 
 # Список каналов TikTok
 TIKTOK_CHANNELS = [
-    "https://www.tiktok.com/@webstoremd",
-    #"https://www.tiktok.com/@itz_comedy_official",
-    #"https://www.tiktok.com/@alexanderyur7",
+    "https://www.tiktok.com/@alexanderyur7",
     # Добавьте другие каналы здесь
 ]
+
+# Функция для чтения последнего индекса
+def read_last_index():
+    try:
+        with open("last_index.txt", "r") as file:
+            return int(file.read().strip())
+    except (FileNotFoundError, ValueError):
+        return 0  # Если файла нет или он пуст, начинаем с первого видео
+
+# Функция для обновления последнего индекса
+def update_last_index(index):
+    with open("last_index.txt", "w") as file:
+        file.write(str(index))
 
 async def tiktok_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -57,8 +65,6 @@ async def post_tiktok_video(context: ContextTypes.DEFAULT_TYPE):
     """
     Периодическая задача для публикации видео из TikTok.
     """
-    global last_posted_videos
-
     # Проверяем текущее время
     now = datetime.now().time()
     if not (START_TIME <= now <= END_TIME):
@@ -72,31 +78,36 @@ async def post_tiktok_video(context: ContextTypes.DEFAULT_TYPE):
     for channel_url in TIKTOK_CHANNELS:
         print(f"Проверяем канал: {channel_url}")
 
-        # Получаем ссылку на последнее видео
-        latest_video_url = await get_latest_tiktok_video_url(channel_url)
+        # Получаем список всех видео с канала
+        video_urls = await get_tiktok_video_urls(channel_url)
 
-        if latest_video_url:
-            # Проверяем, было ли это видео уже опубликовано для данного канала
-            if channel_url in last_posted_videos and latest_video_url == last_posted_videos[channel_url]:
-                print(f"Видео из TikTok уже было опубликовано: {latest_video_url}")
-                continue  # Переходим к следующему каналу
+        if video_urls:
+            # Читаем последний индекс из файла
+            last_index = read_last_index()
+
+            # Проверяем, есть ли еще видео для публикации
+            if last_index >= len(video_urls):
+                print("Все видео на канале уже опубликованы.")
+                continue
+
+            # Получаем следующее видео для публикации
+            video_url = video_urls[last_index]
 
             # Скачиваем видео
-            downloaded_video_path = await download_tiktok_video(latest_video_url)
+            downloaded_video_path = await download_tiktok_video(video_url)
 
             if downloaded_video_path:
                 try:
-                    # Открываем файл и отправляем видео в чат как новое сообщение
+                    # Отправляем видео в чат
                     with open(downloaded_video_path, 'rb') as video_file:
                         await context.bot.send_video(
                             chat_id=context.job.chat_id,  # ID чата
                             video=video_file,  # Видеофайл
                             caption="🎬 Новый прикол! 🤣 Смотри 👉 @moldovabolgaria \n#ВирусноеВидео #Юмор #Тренды"  # Опциональный заголовок
                         )
-                    # Обновляем последнее опубликованное видео для этого канала
-                    last_posted_videos[channel_url] = latest_video_url
+                    # Обновляем индекс последнего опубликованного видео
+                    update_last_index(last_index + 1)
                     print(f"Видео успешно отправлено: {downloaded_video_path}")
-                    break  # Выходим из цикла после успешной публикации
                 except Exception as e:
                     print(f"Ошибка при отправке видео: {e}")
                 finally:
@@ -119,16 +130,16 @@ async def post_tiktok_video(context: ContextTypes.DEFAULT_TYPE):
             else:
                 print("Не удалось скачать видео из TikTok.")
         else:
-            print("Не удалось получить ссылку на последнее видео.")
+            print("Не удалось получить список видео.")
     else:
         print("Нет новых видео на всех каналах.")
 
-async def get_latest_tiktok_video_url(channel_url):
+async def get_tiktok_video_urls(channel_url):
     """
-    Получает ссылку на последнее видео TikTok канала.
+    Получает список всех видео с канала TikTok.
     
     :param channel_url: Ссылка на канал TikTok.
-    :return: Ссылка на последнее видео или None в случае ошибки.
+    :return: Список ссылок на видео или None в случае ошибки.
     """
     try:
         # Настройки для yt-dlp
@@ -141,12 +152,12 @@ async def get_latest_tiktok_video_url(channel_url):
         with YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(channel_url, download=False)
             if 'entries' in info_dict:  # Если это канал с несколькими видео
-                latest_video_url = info_dict['entries'][0]['url']  # Ссылка на последнее видео
-                return latest_video_url
+                video_urls = [entry['url'] for entry in info_dict['entries']]
+                return video_urls
             else:
-                return None  # Если видео не найдено
+                return []  # Если видео не найдено
     except Exception as e:
-        print(f"Ошибка при получении ссылки на видео: {e}")
+        print(f"Ошибка при получении списка видео: {e}")
         return None
 
 async def download_tiktok_video(video_url, output_dir="downloads"):
