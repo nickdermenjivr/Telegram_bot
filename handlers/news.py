@@ -118,38 +118,31 @@ def get_real_url(relative_url):
     
     options = Options()
     options.add_argument("--headless")
-    options.add_argument("--no-sandbox")  # Обязательно для Linux
-    options.add_argument("--disable-dev-shm-usage")  # Важно для ограниченной памяти
-    options.add_argument("--remote-debugging-port=9222")  # Фиксированный порт
-    options.add_argument("--user-data-dir=/tmp/chrome_profile")  # Уникальная папка профиля
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
     
     try:
-        # Для Linux явно укажите путь к chromedriver
         service = Service('/usr/bin/chromedriver')
         driver = webdriver.Chrome(service=service, options=options)
         
+        # Принудительно устанавливаем язык и регион
+        driver.get("https://news.google.com/?hl=ru&gl=RU&ceid=RU:ru")
+        time.sleep(2)  # Ждем загрузки
+        
+        # Теперь получаем нужную ссылку
         driver.get(full_url)
-        driver.set_page_load_timeout(30)
+        time.sleep(3)  # Важно: ждем завершения редиректов
         
-        current_url = driver.current_url
-        stable = False
-        attempts = 0
+        # Проверяем, не попали ли на страницу согласия
+        if "consent.google.com" in driver.current_url:
+            # Принимаем соглашение автоматически (если требуется)
+            try:
+                driver.find_element(By.XPATH, "//button[contains(., 'Принять все')]").click()
+                time.sleep(2)
+            except:
+                pass
         
-        while not stable and attempts < 10:
-            time.sleep(1)
-            new_url = driver.current_url
-            
-            if new_url == current_url:
-                stable = True
-            else:
-                current_url = new_url
-            
-            attempts += 1
-        
-        return driver.current_url
-    except WebDriverException as e:
-        print(f"WebDriver error: {e}")
-        return ""
+        return driver.current_url.split("&utm_medium")[0]  # Обрезаем трекеры
     finally:
-        if 'driver' in locals():
-            driver.quit()
+        driver.quit()
