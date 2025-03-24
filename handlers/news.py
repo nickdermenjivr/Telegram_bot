@@ -76,11 +76,12 @@ async def post_news(context: ContextTypes.DEFAULT_TYPE):
         news = parse_news(source_index)
         if news != last_news[source_index]:
             last_news[source_index] = news
+            # Combine the caption with the message text
+            message_text = f"🚨 Свежие новости от @moldovabolgaria — читайте прямо сейчас!\n\n{news.format_news()}"
             await context.bot.send_message(
                 chat_id=context.job.chat_id, 
-                text=news.format_news(),
-                caption="🚨 Свежие новости от @moldovabolgaria — читайте прямо сейчас!"
-                )
+                text=message_text
+            )
             print(f"News posted from source {source_index}: {news.link}")
             return  # Публикуем только одну новость за раз
 
