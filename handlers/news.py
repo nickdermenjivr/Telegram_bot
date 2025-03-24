@@ -15,10 +15,10 @@ END_TIME = datetime_time(22, 0)  # Используем переименован
 
 # Словарь с источниками и их параметрами парсинга
 sources = {
-    1: {
-        "url": "https://news.google.com/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx1YlY4U0FuSjFHZ0pTVlNnQVAB?hl=ru&gl=RU&ceid=RU%3Aru",
-        "parser": lambda soup: soup.find("a", class_="WwrzSb")["href"],
-    },
+    #1: {
+    #    "url": "https://news.google.com/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx1YlY4U0FuSjFHZ0pTVlNnQVAB?hl=ru&gl=RU&ceid=RU%3Aru",
+    #    "parser": lambda soup: soup.find("a", class_="WwrzSb")["href"],
+    #},
     2: {
         "url": "https://nokta.md",
         "parser": lambda soup: soup.find("a", class_="list-item__link-inner")["href"],
@@ -99,10 +99,10 @@ def parse_news(source_index):
         soup = BeautifulSoup(response.text, "lxml")
         link = source["parser"](soup)
 
-        if not link.startswith("https"):
-            print("GET REAL LINK")
-            real_url = get_real_url(link)
-            return NewsItem(real_url)
+        #if not link.startswith("https"):
+            #print("GET REAL LINK")
+            #real_url = get_real_url(link)
+            #return NewsItem(real_url)
 
         return NewsItem(link)
     except Exception as e:
