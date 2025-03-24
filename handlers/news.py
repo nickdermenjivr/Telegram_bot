@@ -8,6 +8,8 @@ from telegram.ext import ContextTypes
 from urllib.parse import urljoin
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import WebDriverException
 
 # Время начала и окончания работы (8:00 - 22:00)
 START_TIME = datetime_time(8, 0)  # Используем переименованный datetime_time
@@ -114,23 +116,27 @@ def parse_news(source_index):
 def get_real_url(relative_url):
     full_url = urljoin("https://news.google.com/", relative_url)
     
-    # Настройка браузера Chrome
     options = Options()
     options.add_argument("--headless")
-    driver = webdriver.Chrome(options=options)
+    options.add_argument("--no-sandbox")  # Обязательно для Linux
+    options.add_argument("--disable-dev-shm-usage")  # Важно для ограниченной памяти
+    options.add_argument("--remote-debugging-port=9222")  # Фиксированный порт
+    options.add_argument("--user-data-dir=/tmp/chrome_profile")  # Уникальная папка профиля
     
     try:
-        # Переходим по URL
-        driver.get(full_url)
+        # Для Linux явно укажите путь к chromedriver
+        service = Service('/usr/bin/chromedriver')
+        driver = webdriver.Chrome(service=service, options=options)
         
-        # Начальный URL
+        driver.get(full_url)
+        driver.set_page_load_timeout(30)
+        
         current_url = driver.current_url
         stable = False
         attempts = 0
         
-        # Проверяем стабильность URL
         while not stable and attempts < 10:
-            time.sleep(1)  # Важно: используем time.sleep(), а не time()
+            time.sleep(1)
             new_url = driver.current_url
             
             if new_url == current_url:
@@ -140,7 +146,10 @@ def get_real_url(relative_url):
             
             attempts += 1
         
-        # Возвращаем финальный URL
         return driver.current_url
+    except WebDriverException as e:
+        print(f"WebDriver error: {e}")
+        return ""
     finally:
-        driver.quit()
+        if 'driver' in locals():
+            driver.quit()
